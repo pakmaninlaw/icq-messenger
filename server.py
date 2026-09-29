@@ -67,7 +67,8 @@ def init_db():
     with db_connect() as db:
         db.executescript("""
             CREATE TABLE IF NOT EXISTS users (
-                login         TEXT PRIMARY KEY COLLATE NOCASE,
+                login_key     TEXT PRIMARY KEY,      -- логин в нижнем регистре: «Сергей» и «сергей» — один пользователь
+                login         TEXT NOT NULL,         -- как пользователь написал при регистрации
                 password_hash TEXT NOT NULL,
                 created_at    TEXT NOT NULL
             );
@@ -89,11 +90,13 @@ def history():
 
 def check_user(login, password):
     """Вход: известный логин — сверяем пароль с хешем; новый — регистрируем (первый вход = регистрация)."""
+    # SQLite сравнивает без учёта регистра только латиницу, поэтому ключ приводим к нижнему регистру в Python
+    key = login.casefold()
     with db_connect() as db:
-        row = db.execute("SELECT password_hash FROM users WHERE login = ?", (login,)).fetchone()
+        row = db.execute("SELECT password_hash FROM users WHERE login_key = ?", (key,)).fetchone()
         if row is None:
-            db.execute("INSERT INTO users (login, password_hash, created_at) VALUES (?, ?, ?)",
-                       (login, generate_password_hash(password), datetime.now().isoformat(timespec="seconds")))
+            db.execute("INSERT INTO users (login_key, login, password_hash, created_at) VALUES (?, ?, ?, ?)",
+                       (key, login, generate_password_hash(password), datetime.now().isoformat(timespec="seconds")))
             return "new"
         return "ok" if check_password_hash(row["password_hash"], password) else "wrong"
 
