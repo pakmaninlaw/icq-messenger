@@ -1,0 +1,6 @@
+*.db
+icq_client.json
+__pycache__/
+*.pyc
+.venv/
+.idea/
